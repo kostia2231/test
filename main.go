@@ -1,16 +1,44 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Book struct {
 	Title  string `json:"title"`
 	Author string `json:"author"`
+}
+
+var db *sql.DB
+
+func initDB() {
+	var err error
+
+	db, err := sql.Open("sqlite3", "./books.db")
+	if err != nil {
+		log.Fatalf("failed to open db: %v", err)
+	}
+
+	createTableQuery := `
+		CREATE TABLE IF NOT EXISTS books (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT NOT NULL,
+			author TEXT NOT NULL
+		);
+		`
+
+	_, err = db.Exec(createTableQuery)
+	if err != nil {
+		log.Fatalf("failed to create table: %v", err)
+	}
+	fmt.Println("Database initialized successfully")
 }
 
 func CreateBook(w http.ResponseWriter, r *http.Request) {
@@ -51,15 +79,6 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	r := mux.NewRouter()
-
-	//+params
-	r.HandleFunc("/books/{title}/page/{page}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		title := vars["title"]
-		page := vars["page"]
-
-		fmt.Fprintf(w, "You've requested the book: %s on page %s\n", title, page)
-	})
 
 	//crud
 	r.HandleFunc("/books/{title}", CreateBook).Methods("POST")
